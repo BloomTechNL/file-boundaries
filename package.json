@@ -1,0 +1,17 @@
+{
+  "name": "file-boundaries",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha tests/**/*.js"
+  },
+  "private": false,
+  "peerDependencies": {
+    "eslint": ">=7.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "mocha": "^10.8.2"
+  }
+}

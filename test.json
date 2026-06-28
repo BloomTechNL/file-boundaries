@@ -1,0 +1,17 @@
+[
+  {
+    "tag": "layer",
+    "values": [
+      "composition-root",
+      "acceptance-tests"
+      ]
+  },
+  {
+    "tag": "subdomain",
+    "values": [
+      "ordering",
+      "fulfillment",
+      "inventory",
+      ]
+  }
+]
