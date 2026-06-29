@@ -79,3 +79,7 @@ An array of boundary definitions:
 ## LLM Compatibility
 
 Using file-level JSDoc tags also helps LLMs understand the architectural context of a file without needing to traverse the entire directory structure.
+
+## License
+
+MIT

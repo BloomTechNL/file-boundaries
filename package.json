@@ -1,8 +1,26 @@
 {
-  "name": "file-boundaries",
+  "name": "eslint-plugin-file-boundaries",
   "version": "1.0.0",
-  "description": "",
+  "description": "Enforce multi-dimensional boundaries between files using JSDoc tags.",
   "main": "index.js",
+  "files": [
+    "index.js",
+    "rules/",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "boundaries",
+    "architecture",
+    "jsdoc",
+    "layers",
+    "subdomains"
+  ],
+  "author": "",
+  "license": "MIT",
   "scripts": {
     "test": "mocha tests/**/*.js"
   },
