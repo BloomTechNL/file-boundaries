@@ -35,11 +35,19 @@ module.exports = {
     const sourceCode = context.getSourceCode();
     const comments = sourceCode.getAllComments();
 
-    // Find the first JSDoc comment that might contain our tags
-    const jsDocComment = comments.find(comment => comment.type === 'Block' && comment.value.startsWith('*'));
+    // Find all JSDoc comments
+    const jsDocComments = comments.filter(comment => comment.type === 'Block' && comment.value.startsWith('*'));
+    const jsDocComment = jsDocComments[0];
 
     const tagsInFile = {};
+    let jsDocAtTop = false;
+
     if (jsDocComment) {
+      // Check if it's at the top (ignoring shebang/comments before it if we want to be strict, 
+      // but let's just check if there's any code before it)
+      const tokensBefore = sourceCode.getTokensBefore(jsDocComment);
+      jsDocAtTop = tokensBefore.length === 0;
+
       const tagRegex = /@(\w+)\s+([^\s\*]+)/g;
       let match;
       while ((match = tagRegex.exec(jsDocComment.value)) !== null) {
@@ -49,6 +57,31 @@ module.exports = {
 
     return {
       Program(node) {
+        if (jsDocComment && !jsDocAtTop) {
+            context.report({
+                node: jsDocComment,
+                message: 'JSDoc for tagging must be at the top of the file.',
+            });
+        }
+        
+        if (jsDocComments.length > 1) {
+            // Check if subsequent JSDoc comments contain any of the tags we're looking for
+            jsDocComments.slice(1).forEach(comment => {
+                const tagRegex = /@(\w+)\s+([^\s\*]+)/g;
+                let match;
+                while ((match = tagRegex.exec(comment.value)) !== null) {
+                    const tagName = match[1];
+                    if (options.some(config => config.tag === tagName)) {
+                        context.report({
+                            node: comment,
+                            message: 'JSDoc for tagging must be at the top of the file.',
+                        });
+                        break;
+                    }
+                }
+            });
+        }
+
         options.forEach(config => {
           const { tag, mandatory, checkPath, values } = config;
           const value = tagsInFile[tag];
@@ -61,7 +94,8 @@ module.exports = {
           }
 
           if (checkPath && checkPath !== 'none') {
-            const pathValue = values.find(v => filename.includes(v));
+            const sortedValues = [...values].sort((a, b) => b.length - a.length);
+            const pathValue = sortedValues.find(v => filename.includes(v));
 
             if (checkPath === 'strict' && !pathValue) {
               context.report({
@@ -81,7 +115,7 @@ module.exports = {
                   message: `Tag "@${tag}" must be "${pathValue}" because it is in the path.`,
                   fix(fixer) {
                     if (jsDocComment) {
-                      const tagRegex = new RegExp(`@${tag}\\s+([\\w-]+)`);
+                      const tagRegex = new RegExp(`@${tag}\\s+([^\\s\\*]+)`);
                       const newValue = jsDocComment.value.replace(tagRegex, `@${tag} ${pathValue}`);
                       if (newValue !== jsDocComment.value) {
                         return fixer.replaceText(jsDocComment, `/*${newValue}*/`);

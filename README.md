@@ -54,7 +54,7 @@ Add it to your `.eslintrc.json`:
 
 ### `tagging-rule`
 
-Ensures that files are correctly tagged using JSDoc.
+Ensures that files are correctly tagged using JSDoc. The JSDoc block containing the tags must be at the top of the file.
 
 #### Configuration
 
