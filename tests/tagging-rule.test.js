@@ -53,6 +53,22 @@ ruleTester.run('tagging-rule', rule, {
     {
         code: '/** @layer api-v2 */',
         options: [[{ tag: 'layer', values: ['api-v2', 'frontend'] }]],
+    },
+    {
+        code: '/**\n * @layer api\n * @subdomain ordering\n */',
+        filename: 'src/api/ordering/service.ts',
+        options: [[
+            { tag: 'layer', values: ['api'], checkPath: 'consistent' },
+            { tag: 'subdomain', values: ['ordering'], checkPath: 'strict' }
+        ]],
+    },
+    {
+        code: '/**\n * @layer frontend\n * @subdomain fulfillment\n */',
+        filename: 'src/api/ordering/service.ts',
+        options: [[
+            { tag: 'layer', values: ['api', 'frontend'], checkPath: 'none' },
+            { tag: 'subdomain', values: ['ordering', 'fulfillment'], checkPath: 'none' }
+        ]],
     }
   ],
   invalid: [
@@ -114,6 +130,25 @@ ruleTester.run('tagging-rule', rule, {
         filename: 'src/other/service.ts',
         options: [[{ tag: 'layer', values: ['api'], checkPath: 'strict' }]],
         errors: [{ message: 'Tag "@layer" must be present in the path. Allowed values: api.' }],
+    },
+    {
+        code: '/**\n * @layer api\n * @subdomain fulfillment\n */',
+        filename: 'src/api/ordering/service.ts',
+        options: [[
+            { tag: 'layer', values: ['api'], checkPath: 'consistent' },
+            { tag: 'subdomain', values: ['ordering', 'fulfillment'], checkPath: 'consistent' }
+        ]],
+        errors: [{ message: 'Tag "@subdomain" must be "ordering" because it is in the path.' }],
+        output: '/**\n * @layer api\n * @subdomain ordering\n */',
+    },
+    {
+        code: '/**\n * @layer api\n * @subdomain ordering\n */',
+        filename: 'src/api/other/service.ts',
+        options: [[
+            { tag: 'layer', values: ['api'], checkPath: 'strict' },
+            { tag: 'subdomain', values: ['ordering'], checkPath: 'strict' }
+        ]],
+        errors: [{ message: 'Tag "@subdomain" must be present in the path. Allowed values: ordering.' }],
     }
   ],
 });
