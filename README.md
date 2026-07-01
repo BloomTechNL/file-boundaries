@@ -36,7 +36,7 @@ Add it to your `.eslintrc.json`:
       },
       {
         "tag": "subdomain",
-        "valueInPath": true,
+        "checkPath": "consistent",
         "values": ["ordering", "fulfillment", "inventory"]
       }
     ]],
@@ -63,7 +63,10 @@ An array of objects with the following properties:
 - `tag`: The name of the JSDoc tag (e.g., `layer`).
 - `values`: An array of allowed values for this tag.
 - `mandatory` (optional, default `false`): If `true`, every file must have this tag.
-- `valueInPath` (optional, default `false`): If `true`, if one of the `values` is present as a substring in the file's path (folder name), the file *must* have that value for the tag. This is auto-fixable with `--fix`.
+- `checkPath` (optional, default `none`):
+  - `none`: Ignore the file path.
+  - `consistent`: If one of the `values` is present as a substring in the file's path (folder name), the file *must* have that value for the tag. This is auto-fixable with `--fix`.
+  - `strict`: Same as `consistent`, but also requires that one of the `values` *must* be present in the path.
 
 ### `import-rule`
 

@@ -17,7 +17,7 @@ module.exports = {
           properties: {
             tag: { type: 'string' },
             mandatory: { type: 'boolean' },
-            valueInPath: { type: 'boolean' },
+            checkPath: { enum: ['none', 'consistent', 'strict'] },
             values: {
               type: 'array',
               items: { type: 'string' },
@@ -50,7 +50,7 @@ module.exports = {
     return {
       Program(node) {
         options.forEach(config => {
-          const { tag, mandatory, valueInPath, values } = config;
+          const { tag, mandatory, checkPath, values } = config;
           const value = tagsInFile[tag];
 
           if (mandatory && !value) {
@@ -60,8 +60,16 @@ module.exports = {
             });
           }
 
-          if (valueInPath) {
+          if (checkPath && checkPath !== 'none') {
             const pathValue = values.find(v => filename.includes(v));
+
+            if (checkPath === 'strict' && !pathValue) {
+              context.report({
+                node,
+                message: `Tag "@${tag}" must be present in the path. Allowed values: ${values.join(', ')}.`,
+              });
+            }
+
             if (pathValue) {
               if (value && value !== pathValue) {
                 context.report({

@@ -23,6 +23,16 @@ ruleTester.run('tagging-rule', rule, {
     {
         code: '// No JSDoc, but layer is not mandatory\nconst x = 1;',
         options: [[{ tag: 'layer', values: ['api'] }]],
+    },
+    {
+        code: '/** @layer api */',
+        filename: 'src/other/service.ts',
+        options: [[{ tag: 'layer', values: ['api'], checkPath: 'none' }]],
+    },
+    {
+        code: '/** @layer api */',
+        filename: 'src/api/service.ts',
+        options: [[{ tag: 'layer', values: ['api'], checkPath: 'strict' }]],
     }
   ],
   invalid: [
@@ -39,16 +49,22 @@ ruleTester.run('tagging-rule', rule, {
     {
       code: '/** @layer frontend */',
       filename: 'src/api/service.ts',
-      options: [[{ tag: 'layer', values: ['api', 'frontend'], valueInPath: true }]],
+      options: [[{ tag: 'layer', values: ['api', 'frontend'], checkPath: 'consistent' }]],
       errors: [{ message: 'Tag "@layer" must be "api" because it is in the path.' }],
       output: '/** @layer api */',
     },
     {
         code: 'const x = 1;',
         filename: 'src/api/service.ts',
-        options: [[{ tag: 'layer', values: ['api'], valueInPath: true }]],
+        options: [[{ tag: 'layer', values: ['api'], checkPath: 'consistent' }]],
         errors: [{ message: 'Tag "@layer" should be "api" because it is in the path.' }],
         output: '/**\n * @layer api\n */\nconst x = 1;',
+    },
+    {
+        code: 'const x = 1;',
+        filename: 'src/other/service.ts',
+        options: [[{ tag: 'layer', values: ['api'], checkPath: 'strict' }]],
+        errors: [{ message: 'Tag "@layer" must be present in the path. Allowed values: api.' }],
     }
   ],
 });
