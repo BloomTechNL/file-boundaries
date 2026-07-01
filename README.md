@@ -22,32 +22,38 @@ export const myService = {};
 npm install eslint-plugin-file-boundaries --save-dev
 ```
 
-Add it to your `.eslintrc.json`:
+Add it to your `eslint.config.js`:
 
-```json
-{
-  "plugins": ["file-boundaries"],
-  "rules": {
-    "file-boundaries/tagging-rule": ["error", [
-      {
-        "tag": "layer",
-        "mandatory": true,
-        "values": ["api", "frontend", "composition-root"]
-      },
-      {
-        "tag": "subdomain",
-        "checkPath": "consistent",
-        "values": ["ordering", "fulfillment", "inventory"]
-      }
-    ]],
-    "file-boundaries/import-rule": ["error", [
-      {
-        "conditions": [{"tag": "layer", "value": "frontend"}],
-        "shouldOnlyDependOn": [{"tag": "layer", "value": "api"}]
-      }
-    ]]
+```javascript
+const fileBoundaries = require("eslint-plugin-file-boundaries");
+
+module.exports = [
+  {
+    plugins: {
+      "file-boundaries": fileBoundaries,
+    },
+    rules: {
+      "file-boundaries/tagging-rule": ["error", [
+        {
+          "tag": "layer",
+          "mandatory": true,
+          "values": ["api", "frontend", "composition-root"]
+        },
+        {
+          "tag": "subdomain",
+          "checkPath": "consistent",
+          "values": ["ordering", "fulfillment", "inventory"]
+        }
+      ]],
+      "file-boundaries/import-rule": ["error", [
+        {
+          "conditions": [{"tag": "layer", "value": "frontend"}],
+          "shouldOnlyDependOn": [{"tag": "layer", "value": "api"}]
+        }
+      ]]
+    }
   }
-}
+];
 ```
 
 ## Rules
