@@ -77,6 +77,25 @@ ruleTester.run('tagging-rule', rule, {
         filename: 'src/other/api-client.ts',
         options: [[{ tag: 'layer', values: ['api', 'frontend'], checkPath: { mode: 'consistent', includeFileName: false } }]],
     },
+    {
+        // A plain, tag-less JSDoc block anywhere in the file is not a tags
+        // block, so it must not trigger the "must be at the top" check.
+        code: 'function helper() {}\n\n/**\n * Does something unrelated, no tags here at all.\n */\nfunction other() {}',
+        options: [[{ tag: 'layer', values: ['api'] }]],
+    },
+    {
+        // Same, but the tagging JSDoc block is itself correctly at the top;
+        // an unrelated JSDoc block later in the file must still be ignored.
+        code: '/** @layer api */\nfunction helper() {}\n\n/**\n * Just documentation, no tags.\n */\nfunction other() {}',
+        options: [[{ tag: 'layer', values: ['api'] }]],
+    },
+    {
+        // An unrelated JSDoc block with JSDoc-style tags that aren't
+        // configured (e.g. @param/@returns) must not be mistaken for a tags
+        // block either.
+        code: '/** @layer api */\nfunction helper() {}\n\n/**\n * @param {number} x\n * @returns {number}\n */\nfunction other(x) { return x; }',
+        options: [[{ tag: 'layer', values: ['api'] }]],
+    },
   ],
   invalid: [
     {
@@ -174,6 +193,14 @@ ruleTester.run('tagging-rule', rule, {
         options: [[{ tag: 'layer', values: ['api', 'frontend'], checkPath: { mode: 'consistent', includeFileName: false } }]],
         errors: [{ message: 'Tag "@layer" must be "api" because it is in the path.' }],
         output: '/** @layer api */',
+    },
+    {
+        // A plain, tag-less JSDoc block doesn't affect the duplicate check:
+        // only the second *tagging* block (the one containing @layer) must
+        // be flagged, not the unrelated documentation block before it.
+        code: '/** @layer api */\n\n/**\n * Just documentation, no tags.\n */\n\n/** @layer frontend */',
+        options: [[{ tag: 'layer', values: ['api', 'frontend'] }]],
+        errors: [{ message: 'JSDoc for tagging must be at the top of the file.' }],
     },
   ],
 });

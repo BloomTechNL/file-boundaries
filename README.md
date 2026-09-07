@@ -1,10 +1,15 @@
 # eslint-plugin-file-boundaries
 
-Enforce multi-dimensional boundaries between files using JSDoc tags.
+Enforce multi-dimensional, file-level boundaries using JSDoc tags — and keep those tags consistent with your file paths.
 
 ## Philosophy
 
-File hierarchy alone is often insufficient for defining boundaries in a complex codebase because it only allows differentiation along one axis (the folder structure). `eslint-plugin-file-boundaries` taps into JSDoc annotations to allow multi-dimensional tagging of files, helping you enforce strict architectural layers and subdomain boundaries.
+File hierarchy alone is often insufficient for defining boundaries in a complex codebase, because it only allows differentiation along one axis (the folder structure) and forces every file sharing a boundary to physically live under the same directory. `eslint-plugin-file-boundaries` taps into JSDoc annotations instead, which gives you two things directory structure alone can't:
+
+- **Multi-dimensional tagging.** A file can be tagged along several independent axes at once (e.g. `@layer` and `@subdomain`), so you can enforce architectural layers and subdomain boundaries simultaneously, without needing a folder for every combination of the two.
+- **Boundaries at the file level, independent of directory structure.** A tag travels with the file itself, not with whatever folder it happens to sit in. That means a single file can carry its own boundary even while living alongside files with a different boundary in the same folder — no reorganizing directories required.
+
+Where the two *do* align — most codebases mirror layers or subdomains in folders — `checkPath` keeps the tag and the path in sync automatically (and can auto-fix drift). That guarantee is useful beyond this plugin: once a tag can't silently drift from the path it's supposed to reflect, any other tool — a custom ESLint rule, a dependency-cruiser config, a codeowners generator, an LLM — can treat the JSDoc tag as ground truth without re-implementing your path-matching rules or worrying they've gone stale.
 
 Example of a tagged file:
 
@@ -15,6 +20,55 @@ Example of a tagged file:
  */
 export const myService = {};
 ```
+
+### File-level boundaries without mirroring folders
+
+Two files can live in the very same folder yet belong to different layers — no directory reshuffling required:
+
+```typescript
+// src/shared/formatCurrency.ts
+/**
+ * @layer frontend
+ */
+export function formatCurrency(amount: number) {
+  /* ... */
+}
+```
+
+```typescript
+// src/shared/hashPassword.ts
+/**
+ * @layer api
+ */
+export function hashPassword(password: string) {
+  /* ... */
+}
+```
+
+Both files sit under `src/shared/`, but each still carries its own, independently enforced `@layer` tag — the boundary lives on the file, not on the folder.
+
+### Keeping tags and paths consistent for other tooling
+
+When most of your codebase *does* follow a `src/<layer>/...` convention, enable `checkPath` so the tag can never silently drift from the folder it's declared to represent:
+
+```javascript
+"file-boundaries/tagging-rule": ["error", [
+  {
+    "tag": "layer",
+    "mandatory": true,
+    "checkPath": "strict",
+    "values": ["api", "frontend"]
+  }
+]]
+```
+
+With this in place, `src/api/orders.ts` is guaranteed to always carry `@layer api` — the rule reports, and can `--fix`, any mismatch. Because that guarantee holds, other tooling can trust the tag without knowing anything about your folder layout, e.g. a standalone script unrelated to this plugin:
+
+```javascript
+const isFrontendFile = (source) => /@layer\s+frontend\b/.test(source);
+```
+
+This lets other tools or lint rules answer "is this file frontend code?" straight from the tag, instead of re-deriving their own path-matching logic — and it stays correct even for the file-level exceptions described above, which `checkPath` deliberately leaves untouched.
 
 ## Installation
 
@@ -44,12 +98,6 @@ module.exports = [
           "checkPath": "consistent",
           "values": ["ordering", "fulfillment", "inventory"]
         }
-      ]],
-      "file-boundaries/import-rule": ["error", [
-        {
-          "conditions": [{"tag": "layer", "value": "frontend"}],
-          "shouldOnlyDependOn": [{"tag": "layer", "value": "api"}]
-        }
       ]]
     }
   }
@@ -76,17 +124,6 @@ An array of objects with the following properties:
   - `{ mode: 'consistent' | 'strict', includeFileName?: boolean }`: Same as the string forms above, but lets you control whether the match considers the full path (including the file name) or only the directory portion.
     - `includeFileName: true` (default): Match against the full path, e.g. `src/api/service.ts`.
     - `includeFileName: false`: Match against only the directory, e.g. `src/api`. Use this if a `values` entry could also appear inside a file name (e.g. a value `"api"` shouldn't match a file named `api-client.ts` in an unrelated folder).
-
-### `import-rule`
-
-Enforces boundaries between files based on their tags.
-
-#### Configuration
-
-An array of boundary definitions:
-
-- `conditions`: A list of tags and values that the *current* file must have for this boundary to apply.
-- `shouldOnlyDependOn`: A list of tags and values that the *imported* files must have. If an import doesn't match any of these, an error is reported.
 
 ## LLM Compatibility
 

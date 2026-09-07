@@ -50,13 +50,30 @@ module.exports = {
 
     // Find all JSDoc comments
     const jsDocComments = comments.filter(comment => comment.type === 'Block' && comment.value.startsWith('*'));
-    const jsDocComment = jsDocComments[0];
+
+    // A JSDoc block can only be "interpreted as a tags block" if it actually
+    // contains at least one of the tags we're configured to look for. Plain
+    // documentation blocks (e.g. `/** Does X. */`) don't count, and must not
+    // be flagged just because they aren't the first thing in the file.
+    const containsConfiguredTag = comment => {
+      const tagRegex = /@(\w+)\s+([^\s\*]+)/g;
+      let match;
+      while ((match = tagRegex.exec(comment.value)) !== null) {
+        if (options.some(config => config.tag === match[1])) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const taggingComments = jsDocComments.filter(containsConfiguredTag);
+    const jsDocComment = taggingComments[0];
 
     const tagsInFile = {};
     let jsDocAtTop = false;
 
     if (jsDocComment) {
-      // Check if it's at the top (ignoring shebang/comments before it if we want to be strict, 
+      // Check if it's at the top (ignoring shebang/comments before it if we want to be strict,
       // but let's just check if there's any code before it)
       const tokensBefore = sourceCode.getTokensBefore(jsDocComment);
       jsDocAtTop = tokensBefore.length === 0;
@@ -76,22 +93,16 @@ module.exports = {
                 message: 'JSDoc for tagging must be at the top of the file.',
             });
         }
-        
-        if (jsDocComments.length > 1) {
-            // Check if subsequent JSDoc comments contain any of the tags we're looking for
-            jsDocComments.slice(1).forEach(comment => {
-                const tagRegex = /@(\w+)\s+([^\s\*]+)/g;
-                let match;
-                while ((match = tagRegex.exec(comment.value)) !== null) {
-                    const tagName = match[1];
-                    if (options.some(config => config.tag === tagName)) {
-                        context.report({
-                            node: comment,
-                            message: 'JSDoc for tagging must be at the top of the file.',
-                        });
-                        break;
-                    }
-                }
+
+        if (taggingComments.length > 1) {
+            // Any additional block that can also be interpreted as a tags
+            // block (i.e. it contains one of the configured tags) is a
+            // duplicate and must be flagged.
+            taggingComments.slice(1).forEach(comment => {
+                context.report({
+                    node: comment,
+                    message: 'JSDoc for tagging must be at the top of the file.',
+                });
             });
         }
 
