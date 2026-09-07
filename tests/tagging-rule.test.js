@@ -69,7 +69,14 @@ ruleTester.run('tagging-rule', rule, {
             { tag: 'layer', values: ['api', 'frontend'], checkPath: 'none' },
             { tag: 'subdomain', values: ['ordering', 'fulfillment'], checkPath: 'none' }
         ]],
-    }
+    },
+    {
+        // "api" only appears in the file name, not the directory, so with
+        // includeFileName: false the path check should not match at all.
+        code: '/** @layer frontend */',
+        filename: 'src/other/api-client.ts',
+        options: [[{ tag: 'layer', values: ['api', 'frontend'], checkPath: { mode: 'consistent', includeFileName: false } }]],
+    },
   ],
   invalid: [
     {
@@ -149,6 +156,24 @@ ruleTester.run('tagging-rule', rule, {
             { tag: 'subdomain', values: ['ordering'], checkPath: 'strict' }
         ]],
         errors: [{ message: 'Tag "@subdomain" must be present in the path. Allowed values: ordering.' }],
-    }
+    },
+    {
+        // "api" is only in the file name, not the directory. With
+        // includeFileName: false this must not count as a path match, so
+        // strict mode reports the value as missing from the path.
+        code: '/** @layer frontend */',
+        filename: 'src/other/api-client.ts',
+        options: [[{ tag: 'layer', values: ['api', 'frontend'], checkPath: { mode: 'strict', includeFileName: false } }]],
+        errors: [{ message: 'Tag "@layer" must be present in the path. Allowed values: api, frontend.' }],
+    },
+    {
+        // Directory does contain "api", so with includeFileName: false the
+        // tag must be fixed to match, ignoring the unrelated file name.
+        code: '/** @layer frontend */',
+        filename: 'src/api/other-client.ts',
+        options: [[{ tag: 'layer', values: ['api', 'frontend'], checkPath: { mode: 'consistent', includeFileName: false } }]],
+        errors: [{ message: 'Tag "@layer" must be "api" because it is in the path.' }],
+        output: '/** @layer api */',
+    },
   ],
 });

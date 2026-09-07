@@ -69,10 +69,13 @@ An array of objects with the following properties:
 - `tag`: The name of the JSDoc tag (e.g., `layer`).
 - `values`: An array of allowed values for this tag.
 - `mandatory` (optional, default `false`): If `true`, every file must have this tag.
-- `checkPath` (optional, default `none`):
-  - `none`: Ignore the file path.
-  - `consistent`: If one of the `values` is present as a substring in the file's path (folder name), the file *must* have that value for the tag. This is auto-fixable with `--fix`.
-  - `strict`: Same as `consistent`, but also requires that one of the `values` *must* be present in the path.
+- `checkPath` (optional, default `none`): Either a string, or an object for more control over what part of the path is matched.
+  - `'none'`: Ignore the file path.
+  - `'consistent'`: If one of the `values` is present as a substring in the file's path, the file *must* have that value for the tag. This is auto-fixable with `--fix`.
+  - `'strict'`: Same as `consistent`, but also requires that one of the `values` *must* be present in the path.
+  - `{ mode: 'consistent' | 'strict', includeFileName?: boolean }`: Same as the string forms above, but lets you control whether the match considers the full path (including the file name) or only the directory portion.
+    - `includeFileName: true` (default): Match against the full path, e.g. `src/api/service.ts`.
+    - `includeFileName: false`: Match against only the directory, e.g. `src/api`. Use this if a `values` entry could also appear inside a file name (e.g. a value `"api"` shouldn't match a file named `api-client.ts` in an unrelated folder).
 
 ### `import-rule`
 

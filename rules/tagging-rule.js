@@ -17,7 +17,20 @@ module.exports = {
           properties: {
             tag: { type: 'string' },
             mandatory: { type: 'boolean' },
-            checkPath: { enum: ['none', 'consistent', 'strict'] },
+            checkPath: {
+              oneOf: [
+                { enum: ['none', 'consistent', 'strict'] },
+                {
+                  type: 'object',
+                  properties: {
+                    mode: { enum: ['consistent', 'strict'] },
+                    includeFileName: { type: 'boolean' },
+                  },
+                  required: ['mode'],
+                  additionalProperties: false,
+                },
+              ],
+            },
             values: {
               type: 'array',
               items: { type: 'string' },
@@ -86,6 +99,12 @@ module.exports = {
           const { tag, mandatory, checkPath, values } = config;
           const value = tagsInFile[tag];
 
+          // checkPath can be a plain string ('none' | 'consistent' | 'strict'),
+          // or an object ({ mode, includeFileName }) when the file name itself
+          // should be excluded from the path match.
+          const checkPathMode = typeof checkPath === 'object' && checkPath !== null ? checkPath.mode : checkPath;
+          const includeFileName = typeof checkPath === 'object' && checkPath !== null ? checkPath.includeFileName !== false : true;
+
           if (mandatory && !value) {
             context.report({
               node,
@@ -93,11 +112,12 @@ module.exports = {
             });
           }
 
-          if (checkPath && checkPath !== 'none') {
+          if (checkPathMode && checkPathMode !== 'none') {
+            const pathToCheck = includeFileName ? filename : path.dirname(filename);
             const sortedValues = [...values].sort((a, b) => b.length - a.length);
-            const pathValue = sortedValues.find(v => filename.includes(v));
+            const pathValue = sortedValues.find(v => pathToCheck.includes(v));
 
-            if (checkPath === 'strict' && !pathValue) {
+            if (checkPathMode === 'strict' && !pathValue) {
               context.report({
                 node,
                 message: `Tag "@${tag}" must be present in the path. Allowed values: ${values.join(', ')}.`,
