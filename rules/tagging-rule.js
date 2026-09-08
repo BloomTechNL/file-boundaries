@@ -1,4 +1,5 @@
 const path = require('path');
+const extractTags = require('../utils/extract-tags');
 
 module.exports = {
   meta: {
@@ -46,44 +47,11 @@ module.exports = {
     const options = context.options[0] || [];
     const filename = context.getFilename();
     const sourceCode = context.getSourceCode();
-    const comments = sourceCode.getAllComments();
 
-    // Find all JSDoc comments
-    const jsDocComments = comments.filter(comment => comment.type === 'Block' && comment.value.startsWith('*'));
-
-    // A JSDoc block can only be "interpreted as a tags block" if it actually
-    // contains at least one of the tags we're configured to look for. Plain
-    // documentation blocks (e.g. `/** Does X. */`) don't count, and must not
-    // be flagged just because they aren't the first thing in the file.
-    const containsConfiguredTag = comment => {
-      const tagRegex = /@(\w+)\s+([^\s\*]+)/g;
-      let match;
-      while ((match = tagRegex.exec(comment.value)) !== null) {
-        if (options.some(config => config.tag === match[1])) {
-          return true;
-        }
-      }
-      return false;
-    };
-
-    const taggingComments = jsDocComments.filter(containsConfiguredTag);
-    const jsDocComment = taggingComments[0];
-
-    const tagsInFile = {};
-    let jsDocAtTop = false;
-
-    if (jsDocComment) {
-      // Check if it's at the top (ignoring shebang/comments before it if we want to be strict,
-      // but let's just check if there's any code before it)
-      const tokensBefore = sourceCode.getTokensBefore(jsDocComment);
-      jsDocAtTop = tokensBefore.length === 0;
-
-      const tagRegex = /@(\w+)\s+([^\s\*]+)/g;
-      let match;
-      while ((match = tagRegex.exec(jsDocComment.value)) !== null) {
-        tagsInFile[match[1]] = match[2];
-      }
-    }
+    const { tags: tagsInFile, jsDocComment, jsDocAtTop, taggingComments } = extractTags(
+      sourceCode,
+      options.map(config => config.tag)
+    );
 
     return {
       Program(node) {

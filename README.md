@@ -125,10 +125,43 @@ An array of objects with the following properties:
     - `includeFileName: true` (default): Match against the full path, e.g. `src/api/service.ts`.
     - `includeFileName: false`: Match against only the directory, e.g. `src/api`. Use this if a `values` entry could also appear inside a file name (e.g. a value `"api"` shouldn't match a file named `api-client.ts` in an unrelated folder).
 
-## LLM Compatibility
+### `tag-scoped-rule`
 
-Using file-level JSDoc tags also helps LLMs understand the architectural context of a file without needing to traverse the entire directory structure.
+Applies *any other* ESLint rule, but only to files that carry a given JSDoc tag (as read by the same tag-detection logic as `tagging-rule`). Useful for rules that should only apply to one boundary — e.g. banning a dependency only inside `@layer frontend` files — without needing a folder-based `files: [...]` override, since the tag isn't tied to where the file lives.
 
-## License
+Because its options carry a live rule object rather than plain JSON, `tag-scoped-rule` only works from a flat config file (`eslint.config.js`), not from a legacy `.eslintrc` JSON/YAML config.
 
-MIT
+#### Configuration
+
+A single object with the following properties:
+
+- `tag`: The name of the JSDoc tag to filter on (e.g., `layer`).
+- `rule`: The ESLint rule object to apply (e.g. a rule imported from another plugin, or one of ESLint's own core rules).
+- `values` (optional): An array of allowed values for the tag. If omitted, any file that has the tag at all matches, regardless of its value.
+- `ruleOptions` (optional, default `[]`): The options array to pass to the wrapped rule, exactly as you'd write it in its own `rules` entry.
+
+```javascript
+const fileBoundaries = require("eslint-plugin-file-boundaries");
+const noRestrictedImports = require("eslint/use-at-your-own-risk").builtinRules.get("no-restricted-imports");
+
+module.exports = [
+  {
+    plugins: {
+      "file-boundaries": fileBoundaries,
+    },
+    rules: {
+      "file-boundaries/tag-scoped-rule": ["error", {
+        "tag": "layer",
+        "values": ["frontend"],
+        "rule": noRestrictedImports,
+        "ruleOptions": [{ "patterns": ["**/api/**"] }]
+      }]
+    }
+  }
+];
+```
+
+With this config, only files tagged `@layer frontend` are checked against the `no-restricted-imports` rule; every other file is left alone, no matter where it lives on disk.
+
+Note that any errors it reports are attributed to `file-boundaries/tag-scoped-rule` rather than the wrapped rule's own name, since ESLint attributes reports to whichever configured rule produced them.
+
