@@ -55,6 +55,18 @@ const noForbiddenWord = {
 registerRule('no-bad-literal', noBadLiteral);
 registerRule('no-forbidden-word', noForbiddenWord);
 
+// For the disable-comment tests below, the wrapped rule is registered under
+// the name of a real, always-loaded ESLint core rule (unrelated to what
+// that core rule actually checks) rather than the fictitious
+// 'no-bad-literal'. RuleTester's own linter validates every rule name
+// referenced in a disable comment against its set of *known* rules — a
+// disable comment naming a rule id it can't resolve at all (fictitious or
+// otherwise) produces its own "Definition for rule ... was not found"
+// diagnostic, independent of tag-scoped-rule. Real wrapped rules (the whole
+// point of tag-scoped-rule) are themselves real, resolvable rule ids, so
+// this doesn't come up outside of these tests.
+registerRule('no-console', noBadLiteral);
+
 const ruleTester = new RuleTester({
   parserOptions: {
     ecmaVersion: 2015,
@@ -85,6 +97,18 @@ ruleTester.run('tag-scoped-rule', rule, {
       code: '/** @layer frontend */\n"nope";',
       options: [{ tag: 'layer', rule: 'no-forbidden-word', ruleOptions: [{ word: 'other' }] }],
     },
+    {
+      // A `// eslint-disable-line <wrapped-rule-name>` comment suppresses
+      // the wrapped rule's report, even though the report is actually
+      // attributed to tag-scoped-rule.
+      code: '/** @layer frontend */\n"bad"; // eslint-disable-line no-console',
+      options: [{ tag: 'layer', values: ['frontend'], rule: 'no-console' }],
+    },
+    {
+      // Same, for eslint-disable-next-line.
+      code: '/** @layer frontend */\n// eslint-disable-next-line no-console\n"bad";',
+      options: [{ tag: 'layer', values: ['frontend'], rule: 'no-console' }],
+    },
   ],
   invalid: [
     {
@@ -108,6 +132,14 @@ ruleTester.run('tag-scoped-rule', rule, {
       code: '/** @layer frontend */\n"nope";',
       options: [{ tag: 'layer', values: ['frontend'], rule: 'no-forbidden-word', ruleOptions: [{ word: 'nope' }] }],
       errors: [{ message: 'Do not use "nope".' }],
+    },
+    {
+      // A disable comment naming a different (real, but unrelated) rule
+      // doesn't suppress ours.
+      code: '/** @layer frontend */\n"bad"; // eslint-disable-line no-console',
+      options: [{ tag: 'layer', values: ['frontend'], rule: 'no-bad-literal' }],
+      errors: [{ message: 'Do not use "bad".' }],
+      output: '/** @layer frontend */\n"good"; // eslint-disable-line no-console',
     },
   ],
 });

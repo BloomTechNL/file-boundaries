@@ -167,3 +167,9 @@ With this config, only files tagged `@layer frontend` are checked against the `n
 
 Note that any errors it reports are attributed to `file-boundaries/tag-scoped-rule` rather than the wrapped rule's own name, since ESLint attributes reports to whichever configured rule produced them.
 
+#### Disable comments
+
+Despite that attribution, `// eslint-disable-line`, `// eslint-disable-next-line`, and `/* eslint-disable */`/`/* eslint-enable */` block comments naming the *wrapped* rule (e.g. `no-restricted-imports`, as registered) still suppress its reports — `tag-scoped-rule` checks for these itself before reporting, since ESLint's own disable-comment handling only ever sees `file-boundaries/tag-scoped-rule` and wouldn't otherwise recognize a comment naming the rule it wraps.
+
+One side effect: if you have `reportUnusedDisableDirectives` enabled, ESLint will flag such a comment as unused (since, from ESLint's own bookkeeping, no problem was ever reported under that name) even though it did suppress something. This is a (non-fatal, warning-level) false positive rather than a sign the comment didn't work.
+

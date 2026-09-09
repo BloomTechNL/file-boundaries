@@ -1,5 +1,30 @@
 const extractTags = require('../utils/extract-tags');
 const { getRule } = require('../utils/rule-registry');
+const { createSuppressionChecker } = require('../utils/inner-rule-suppression');
+
+/**
+ * Pulls the reported location (1-based line, 0-based column, matching
+ * `SourceCode#getIndexFromLoc`) out of either report call shape: the modern
+ * descriptor object (`{ node, loc, message, ... }`) or the legacy positional
+ * form (`report(node, message)` / `report(node, loc, message)`), which some
+ * older wrapped rules may still use.
+ */
+function extractReportLoc(reportArgs) {
+  const [first, second] = reportArgs;
+
+  if (first && typeof first === 'object' && ('message' in first || 'messageId' in first)) {
+    if (first.loc) {
+      return first.loc.start || first.loc;
+    }
+    return first.node && first.node.loc && first.node.loc.start;
+  }
+
+  if (second && typeof second === 'object' && typeof second.line === 'number') {
+    return second;
+  }
+
+  return first && first.loc && first.loc.start;
+}
 
 module.exports = {
   meta: {
@@ -71,6 +96,26 @@ module.exports = {
     // fresh own property shadows it instead.
     const innerContext = Object.create(context);
     Object.defineProperty(innerContext, 'options', { value: ruleOptions, enumerable: true });
+
+    // Every problem reported through `context.report` is attributed to
+    // *this* rule's own configured id, not the wrapped rule's name (ESLint
+    // fixes that at the point it builds the context, before `create()` ever
+    // runs) — so `// eslint-disable-line <wrapped-rule-name>` comments the
+    // wrapped rule's own users already rely on would otherwise silently stop
+    // working. Honor them by checking each report against those comments
+    // ourselves before forwarding it. Bare (unnamed) disable comments need
+    // no special handling here: ESLint's own directive pass already matches
+    // those against every ruleId, tag-scoped-rule's included.
+    const isSuppressed = createSuppressionChecker(sourceCode, ruleName);
+    Object.defineProperty(innerContext, 'report', {
+      value(...args) {
+        if (isSuppressed(extractReportLoc(args))) {
+          return;
+        }
+        return context.report(...args);
+      },
+      enumerable: true,
+    });
 
     return rule.create(innerContext);
   },
