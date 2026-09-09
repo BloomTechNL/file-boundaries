@@ -125,6 +125,34 @@ An array of objects with the following properties:
     - `includeFileName: true` (default): Match against the full path, e.g. `src/api/service.ts`.
     - `includeFileName: false`: Match against only the directory, e.g. `src/api`. Use this if a `values` entry could also appear inside a file name (e.g. a value `"api"` shouldn't match a file named `api-client.ts` in an unrelated folder).
 
+### `import-rule`
+
+Enforces import boundaries using the same JSDoc tags `tagging-rule` reads. Only *direct* imports are checked (not transitive ones), and only relative imports (e.g. `./foo`) are resolved and checked — bare specifiers (packages) are always left alone.
+
+#### Configuration
+
+An array of objects with the following properties:
+
+- `tag`: The name of the JSDoc tag to check (e.g., `layer`).
+- Exactly one of:
+  - `cannotImport`: An array of tag values. No file — regardless of its own tags — may import (directly) a file whose `tag` is one of these values.
+  - `canOnlyImport`: An array of tag values. Only applies to files that carry `tag` themselves; a file without `tag` is left alone. Such a file may only (directly) import files whose `tag` is one of these values, or files that don't carry `tag` at all.
+
+```javascript
+"file-boundaries/import-rule": ["error", [
+  {
+    "tag": "layer",
+    "cannotImport": ["frontend"]
+  },
+  {
+    "tag": "layer",
+    "canOnlyImport": ["api", "shared"]
+  }
+]]
+```
+
+With this config, no file may import a `@layer frontend` file — even one that isn't tagged `@layer` itself — and any file tagged `@layer` may only import files tagged `@layer api` or `@layer shared` (or untagged files); a file with no `@layer` tag is unaffected by the second rule.
+
 ### `filesWithTag`
 
 Finds the files whose content carries a given JSDoc tag (as read by the same tag-detection logic as `tagging-rule`), for use as a flat config block's `files:` list. Useful for scoping *any other* ESLint rule to one boundary — e.g. banning a dependency only inside `@layer frontend` files — without needing that boundary to line up with a folder, since the tag isn't tied to where the file lives.

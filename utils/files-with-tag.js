@@ -1,35 +1,25 @@
 const fs = require('fs');
 const path = require('path');
 const { globToRegExp, staticPrefix } = require('./glob-match');
-const { TAG_REGEX } = require('./tag-pattern');
+const { getTagsFromText } = require('./tags-from-text');
 
 const DEFAULT_IGNORED_DIRS = ['node_modules', '.git'];
-const BLOCK_COMMENT_RE = /\/\*\*([\s\S]*?)\*\//gu;
 
 /**
  * Whether `text` contains a JSDoc-style block comment carrying `tag`
  * (matching `values`, if given). A raw-text approximation of what
  * ../rules/tagging-rule.js actually enforces via a real AST - good enough
  * to build a `files:` list from, since tagging-rule remains the source of
- * truth for whether a file's tag block is well-formed. Mirrors extractTags'
- * "first block naming the tag wins" behavior.
+ * truth for whether a file's tag block is well-formed.
  */
 function hasTag(text, tag, values) {
-  let blockMatch;
-  BLOCK_COMMENT_RE.lastIndex = 0;
+  const tags = getTagsFromText(text, [tag]);
 
-  while ((blockMatch = BLOCK_COMMENT_RE.exec(text)) !== null) {
-    const tagRegex = new RegExp(TAG_REGEX);
-    let tagMatch;
-
-    while ((tagMatch = tagRegex.exec(blockMatch[1])) !== null) {
-      if (tagMatch[1] === tag) {
-        return !values || values.includes(tagMatch[2]);
-      }
-    }
+  if (!(tag in tags)) {
+    return false;
   }
 
-  return false;
+  return !values || values.includes(tags[tag]);
 }
 
 function walk(dir, root, ignoredDirs, out) {
