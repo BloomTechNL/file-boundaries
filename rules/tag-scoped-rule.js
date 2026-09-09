@@ -1,4 +1,5 @@
 const extractTags = require('../utils/extract-tags');
+const { getRule } = require('../utils/rule-registry');
 
 module.exports = {
   meta: {
@@ -15,22 +16,42 @@ module.exports = {
     // the wrapped rule doesn't report any.
     fixable: 'code',
     hasSuggestions: true,
-    // The `rule` option holds a live rule object (a function-bearing value),
-    // which can't be expressed as a JSON schema. We validate options by hand
-    // in `create` instead. This also means tag-scoped-rule can only be
-    // configured from a flat config file (`eslint.config.js`), not from a
-    // JSON/YAML legacy config, since those can't carry a rule reference.
-    schema: false,
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          tag: { type: 'string' },
+          values: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+          // A name registered via `registerRule()`, not the rule object
+          // itself: ESLint 9's flat config clones every rule's options with
+          // `structuredClone`, which throws on anything carrying a function
+          // (as any real rule object does, via its `create`). See
+          // ../utils/rule-registry.js.
+          rule: { type: 'string' },
+          ruleOptions: { type: 'array' },
+        },
+        required: ['tag', 'rule'],
+        additionalProperties: false,
+      },
+    ],
   },
   create(context) {
     const options = context.options[0] || {};
-    const { tag, values, rule, ruleOptions = [] } = options;
+    const { tag, values, rule: ruleName, ruleOptions = [] } = options;
 
     if (!tag || typeof tag !== 'string') {
       throw new Error('tag-scoped-rule requires a `tag` option naming the JSDoc tag to filter on.');
     }
+    if (!ruleName || typeof ruleName !== 'string') {
+      throw new Error('tag-scoped-rule requires a `rule` option naming a rule registered via registerRule().');
+    }
+
+    const rule = getRule(ruleName);
     if (!rule || typeof rule.create !== 'function') {
-      throw new Error('tag-scoped-rule requires a `rule` option holding a real ESLint rule object (with a `create` function).');
+      throw new Error(`tag-scoped-rule: no rule is registered under the name "${ruleName}". Call registerRule("${ruleName}", ruleObject) in your config before referencing it.`);
     }
 
     const sourceCode = context.getSourceCode();

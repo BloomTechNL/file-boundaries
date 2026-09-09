@@ -129,20 +129,22 @@ An array of objects with the following properties:
 
 Applies *any other* ESLint rule, but only to files that carry a given JSDoc tag (as read by the same tag-detection logic as `tagging-rule`). Useful for rules that should only apply to one boundary — e.g. banning a dependency only inside `@layer frontend` files — without needing a folder-based `files: [...]` override, since the tag isn't tied to where the file lives.
 
-Because its options carry a live rule object rather than plain JSON, `tag-scoped-rule` only works from a flat config file (`eslint.config.js`), not from a legacy `.eslintrc` JSON/YAML config.
+The wrapped rule must be registered up front via `registerRule(name, rule)`, exported from this package, and then referenced by that name string. It cannot be passed directly as a rule option: ESLint 9's flat config merges every rule's options through `structuredClone`, which throws on any value containing a function — and a rule object always carries one (its `create`). Because registration is a plain function call (not something ESLint's config merging touches), `tag-scoped-rule` only works from a flat config file (`eslint.config.js`), not from a legacy `.eslintrc` JSON/YAML config.
 
 #### Configuration
 
 A single object with the following properties:
 
 - `tag`: The name of the JSDoc tag to filter on (e.g., `layer`).
-- `rule`: The ESLint rule object to apply (e.g. a rule imported from another plugin, or one of ESLint's own core rules).
+- `rule`: The name a wrapped rule was registered under via `registerRule()` (see below).
 - `values` (optional): An array of allowed values for the tag. If omitted, any file that has the tag at all matches, regardless of its value.
 - `ruleOptions` (optional, default `[]`): The options array to pass to the wrapped rule, exactly as you'd write it in its own `rules` entry.
 
 ```javascript
 const fileBoundaries = require("eslint-plugin-file-boundaries");
 const noRestrictedImports = require("eslint/use-at-your-own-risk").builtinRules.get("no-restricted-imports");
+
+fileBoundaries.registerRule("no-restricted-imports", noRestrictedImports);
 
 module.exports = [
   {
@@ -153,7 +155,7 @@ module.exports = [
       "file-boundaries/tag-scoped-rule": ["error", {
         "tag": "layer",
         "values": ["frontend"],
-        "rule": noRestrictedImports,
+        "rule": "no-restricted-imports",
         "ruleOptions": [{ "patterns": ["**/api/**"] }]
       }]
     }
