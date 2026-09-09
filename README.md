@@ -125,51 +125,39 @@ An array of objects with the following properties:
     - `includeFileName: true` (default): Match against the full path, e.g. `src/api/service.ts`.
     - `includeFileName: false`: Match against only the directory, e.g. `src/api`. Use this if a `values` entry could also appear inside a file name (e.g. a value `"api"` shouldn't match a file named `api-client.ts` in an unrelated folder).
 
-### `tag-scoped-rule`
+### `filesWithTag`
 
-Applies *any other* ESLint rule, but only to files that carry a given JSDoc tag (as read by the same tag-detection logic as `tagging-rule`). Useful for rules that should only apply to one boundary — e.g. banning a dependency only inside `@layer frontend` files — without needing a folder-based `files: [...]` override, since the tag isn't tied to where the file lives.
+Finds the files whose content carries a given JSDoc tag (as read by the same tag-detection logic as `tagging-rule`), for use as a flat config block's `files:` list. Useful for scoping *any other* ESLint rule to one boundary — e.g. banning a dependency only inside `@layer frontend` files — without needing that boundary to line up with a folder, since the tag isn't tied to where the file lives.
 
-The wrapped rule must be registered up front via `registerRule(name, rule)`, exported from this package, and then referenced by that name string. It cannot be passed directly as a rule option: ESLint 9's flat config merges every rule's options through `structuredClone`, which throws on any value containing a function — and a rule object always carries one (its `create`). Because registration is a plain function call (not something ESLint's config merging touches), `tag-scoped-rule` only works from a flat config file (`eslint.config.js`), not from a legacy `.eslintrc` JSON/YAML config.
-
-#### Configuration
-
-A single object with the following properties:
-
-- `tag`: The name of the JSDoc tag to filter on (e.g., `layer`).
-- `rule`: The name a wrapped rule was registered under via `registerRule()` (see below).
-- `values` (optional): An array of allowed values for the tag. If omitted, any file that has the tag at all matches, regardless of its value.
-- `ruleOptions` (optional, default `[]`): The options array to pass to the wrapped rule, exactly as you'd write it in its own `rules` entry.
+Unlike the rules above, `filesWithTag` isn't an ESLint rule at all — it's a plain function, exported from this package, that you call directly in `eslint.config.js` to compute a `files:` array before ESLint even starts linting:
 
 ```javascript
 const fileBoundaries = require("eslint-plugin-file-boundaries");
-const noRestrictedImports = require("eslint/use-at-your-own-risk").builtinRules.get("no-restricted-imports");
 
-fileBoundaries.registerRule("no-restricted-imports", noRestrictedImports);
+const frontendFiles = fileBoundaries.filesWithTag("src/**/*.{js,ts}", {
+  tag: "layer",
+  values: ["frontend"],
+});
 
 module.exports = [
   {
-    plugins: {
-      "file-boundaries": fileBoundaries,
-    },
+    files: frontendFiles,
     rules: {
-      "file-boundaries/tag-scoped-rule": ["error", {
-        "tag": "layer",
-        "values": ["frontend"],
-        "rule": "no-restricted-imports",
-        "ruleOptions": [{ "patterns": ["**/api/**"] }]
-      }]
-    }
-  }
+      "no-restricted-imports": ["error", { patterns: ["**/api/**"] }],
+    },
+  },
 ];
 ```
 
-With this config, only files tagged `@layer frontend` are checked against the `no-restricted-imports` rule; every other file is left alone, no matter where it lives on disk.
+With this config, only files tagged `@layer frontend` are checked against `no-restricted-imports`; every other file is left alone, no matter where it lives on disk. `no-restricted-imports` is otherwise configured completely normally — same as any other flat config block — because `filesWithTag` only ever computes a plain array of file paths; nothing about the rule you're scoping is touched. That means it behaves exactly like ordinary ESLint config in every way that matters: reports show up under its real name, its own fixes and suggestions work, and any `eslint-disable` comment naming it (in its usual, unnamespaced form) just works, because ESLint never even knows a tag was involved in selecting this file.
 
-Note that any errors it reports are attributed to `file-boundaries/tag-scoped-rule` rather than the wrapped rule's own name, since ESLint attributes reports to whichever configured rule produced them.
+#### Configuration
 
-#### Disable comments
+- `patterns`: A glob pattern, or array of them, of candidate files (relative to `cwd`). Supports `*`, `**`, `?`, and `{a,b,c}` alternation — not character classes or extglobs.
+- `tag`: The name of the JSDoc tag to filter on (e.g., `layer`).
+- `values` (optional): An array of allowed values for the tag. If omitted, any file that has the tag at all matches, regardless of its value.
+- `cwd` (optional, default `process.cwd()`): Base directory patterns are resolved against; returned paths are relative to it.
+- `ignoreDirs` (optional, default `[]`): Extra directory names to skip while walking, in addition to `node_modules` and `.git`.
 
-Despite that attribution, `// eslint-disable-line`, `// eslint-disable-next-line`, and `/* eslint-disable */`/`/* eslint-enable */` block comments naming the *wrapped* rule (e.g. `no-restricted-imports`, as registered) still suppress its reports — `tag-scoped-rule` checks for these itself before reporting, since ESLint's own disable-comment handling only ever sees `file-boundaries/tag-scoped-rule` and wouldn't otherwise recognize a comment naming the rule it wraps.
-
-One side effect: if you have `reportUnusedDisableDirectives` enabled, ESLint will flag such a comment as unused (since, from ESLint's own bookkeeping, no problem was ever reported under that name) even though it did suppress something. This is a (non-fatal, warning-level) false positive rather than a sign the comment didn't work.
+Returns an array of matching files as relative POSIX paths, ready to hand straight to a config block's `files:`.
 

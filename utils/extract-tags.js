@@ -1,4 +1,4 @@
-const TAG_REGEX = /@(\w+)\s+([^\s\*]+)/g;
+const { TAG_REGEX } = require('./tag-pattern');
 
 /**
  * Scans a file's JSDoc block comments for the first one that can be
