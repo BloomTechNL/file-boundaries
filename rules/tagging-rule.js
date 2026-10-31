@@ -45,8 +45,8 @@ module.exports = {
   },
   create(context) {
     const options = context.options[0] || [];
-    const filename = context.getFilename();
-    const sourceCode = context.getSourceCode();
+    const filename = context.filename ?? context.getFilename();
+    const sourceCode = context.sourceCode ?? context.getSourceCode();
 
     const { tags: tagsInFile, jsDocComment, jsDocAtTop, taggingComments } = extractTags(
       sourceCode,

@@ -2,7 +2,7 @@ const { RuleTester } = require('eslint');
 const rule = require('../rules/tagging-rule');
 
 const ruleTester = new RuleTester({
-  parserOptions: {
+  languageOptions: {
     ecmaVersion: 2015,
   },
 });

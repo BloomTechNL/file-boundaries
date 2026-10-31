@@ -39,8 +39,8 @@ module.exports = {
   },
   create(context) {
     const options = context.options[0] || [];
-    const filename = context.getFilename();
-    const sourceCode = context.getSourceCode();
+    const filename = context.filename ?? context.getFilename();
+    const sourceCode = context.sourceCode ?? context.getSourceCode();
     const configuredTags = options.map(config => config.tag);
 
     const { tags: tagsInFile } = extractTags(sourceCode, configuredTags);
