@@ -63,6 +63,14 @@ ruleTester.run('tagging-rule', rule, {
         ]],
     },
     {
+        // Not mandatory, and the tag is simply absent: that's allowed even
+        // though "api" is present in the path, since checkPath only enforces
+        // consistency when the tag is actually used, not its presence.
+        code: 'const x = 1;',
+        filename: 'src/api/service.ts',
+        options: [[{ tag: 'layer', values: ['api'], checkPath: { mode: 'consistent', includeFileName: true }, mandatory: false }]],
+    },
+    {
         code: '/**\n * @layer frontend\n * @subdomain fulfillment\n */',
         filename: 'src/api/ordering/service.ts',
         options: [[
@@ -147,8 +155,11 @@ ruleTester.run('tagging-rule', rule, {
     {
         code: 'const x = 1;',
         filename: 'src/api/service.ts',
-        options: [[{ tag: 'layer', values: ['api'], checkPath: 'consistent' }]],
-        errors: [{ message: 'Tag "@layer" should be "api" because it is in the path.' }],
+        options: [[{ tag: 'layer', values: ['api'], checkPath: 'consistent', mandatory: true }]],
+        errors: [
+          { message: 'Tag "@layer" is mandatory.' },
+          { message: 'Tag "@layer" should be "api" because it is in the path.' },
+        ],
         output: '/**\n * @layer api\n */\nconst x = 1;',
     },
     {

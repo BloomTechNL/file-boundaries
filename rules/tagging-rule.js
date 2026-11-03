@@ -124,7 +124,7 @@ module.exports = {
                     }
                   }
                 });
-              } else if (!value) {
+              } else if (!value && mandatory) {
                   context.report({
                       node,
                       message: `Tag "@${tag}" should be "${pathValue}" because it is in the path.`,
