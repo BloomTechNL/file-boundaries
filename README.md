@@ -73,13 +73,13 @@ This lets other tools or lint rules answer "is this file frontend code?" straigh
 ## Installation
 
 ```bash
-npm install eslint-plugin-file-boundaries --save-dev
+npm install @bloom-group/eslint-plugin-file-boundaries --save-dev
 ```
 
 Add it to your `eslint.config.js`:
 
 ```javascript
-const fileBoundaries = require("eslint-plugin-file-boundaries");
+const fileBoundaries = require("@bloom-group/eslint-plugin-file-boundaries");
 
 module.exports = [
   {
@@ -160,7 +160,7 @@ Finds the files whose content carries a given JSDoc tag (as read by the same tag
 Unlike the rules above, `filesWithTag` isn't an ESLint rule at all — it's a plain function, exported from this package, that you call directly in `eslint.config.js` to compute a `files:` array before ESLint even starts linting:
 
 ```javascript
-const fileBoundaries = require("eslint-plugin-file-boundaries");
+const fileBoundaries = require("@bloom-group/eslint-plugin-file-boundaries");
 
 const frontendFiles = fileBoundaries.filesWithTag("src/**/*.{js,ts}", {
   tag: "layer",
